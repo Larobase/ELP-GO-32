@@ -8,14 +8,7 @@ import (
 
 const TAILLEMAT=2
 
-func multiplie(i int, j int,a *[][]int,b*[][]int,c chan int) int{
-	mult := 0
-	for k := 0; k < len(*a); k++ {
-		mult += (*a)[k][i]*(*b)[j][k]
-	}
-	return mult
-	//c <- mult // send mult to c
-}
+yyy
 func max(a int, b int) int {
 	if (a>b){
 		return a
@@ -62,7 +55,9 @@ func main() {
 	
 	for i := 0; i < len(a); i++ {
 			for j := 0; j < len(a[0]); j++ {
-				result[i][j]= multiplie(i,j,&a,&b)
+				for k := 0; k < len(a); k++ {
+					result[i][j]+= a[k][i]*b[j][k]
+				}
 		}
 	}
 	fmt.Println(result)
