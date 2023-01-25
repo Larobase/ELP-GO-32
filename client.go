@@ -9,7 +9,6 @@ import (
 	"math/rand"
     "io/ioutil"	
 	"time"
-	"encoding/binary"
 	"bufio"
 )
 
@@ -26,7 +25,7 @@ const (
 	B = 10
 	TAILLE =3
 )
-func alea (file *os.File){
+func alea(file *os.File){
 	for i := 0; i < TAILLE; i++ {
 		for j := 0; j < TAILLE; j++ {
 			var str = strconv.Itoa(rand.Intn(10) + 1)
@@ -38,55 +37,22 @@ func alea (file *os.File){
 	}
 }
 
-func intToByte(a [][]int) []byte{
-	// Déclaration d'un buffer pour stocker les données encodées
-	var buf []byte
-
-	// Boucle sur chaque sous-tableau pour encoder les entiers
-	for _, subArray := range a {
-		for _, intVal := range subArray {
-			// Encodage de l'entier en bytes
-			var intBytes [4]byte
-			binary.LittleEndian.PutUint32(intBytes[:], uint32(intVal))
-			// Ajout des bytes encodés au buffer
-			buf = append(buf, intBytes[:]...)
-		}
-	}
-	return buf
-}
-
-func add(a []byte,b []byte)[]byte{
-	for i := 0; i < len(b); i++ {
-		a=append(a,b[i])
-	}
-	return a
-}
-
-func extraction(file string) [][]int{
+func textToString(file string) string{
     count, err := ioutil.ReadFile(file) // lire le fichier text.txt
     gestionErreur(err)
-
+	var chaine_mat=""
     var mat = string(count)
 	lines := strings.Split(mat, "\n")
-	chars := make([][]string, len(lines))
-	number := make([][]int, len(lines))
-	var nb=0
 	for i := 0; i < TAILLE; i++ {
-		chars[i] = strings.Fields(lines[i])
+		chaine_mat+=lines[i]
 	}
-	for i := 0; i < TAILLE; i++ {
-		for j := 0; j < TAILLE; j++ {
-			nb,err = strconv.Atoi(chars[i][j])
-			gestionErreur(err)
-			number[i] = append(number[i],nb)
-
-		}
-	}
-	return number
+	chaine_mat=strings.Replace(chaine_mat, " ", "",-1)
+	return chaine_mat
 }
 
 func main() {
-	start :=time.Now()
+	start :=time.Now() //pour mesurer le temps entre le début et la fin du programme
+//Pour chaque fichier, on supprime celui existant, on en crée un nouveau vide et on le rempli d'entiers aleatoires en fonction de TAILLE
 	os.Remove("A.txt")
 	os.Create("A.txt")
 	file_a,err := os.OpenFile("A.txt", os.O_CREATE|os.O_WRONLY, 0600)
@@ -105,35 +71,35 @@ func main() {
 	gestionErreur(err)
 	defer file_result.Close()
 
-	rand.Seed(time.Now().UnixNano())
+	rand.Seed(time.Now().UnixNano()) //on reset l'aléatoire pour que ça change à chque nouveau lancement de programme
 	alea(file_a)
 	alea(file_b)
 
-	var matA = extraction("A.txt")
-	var matB = extraction("B.txt")
+	//On transforme les fichiers textes en 
+	var matA = textToString("A.txt")
+	var matB = textToString("B.txt")
+	var result = [TAILLE]string{}
+
 	//var matResult = [TAILLE][TAILLE]int{}
 	fmt.Println(time.Since(start))
 	// Connexion au serveur
 	conn, err := net.Dial("tcp", fmt.Sprintf("%s:%s", IP, PORT))
 
 	gestionErreur(err)
-
-	for {
-		
-		// On envoie le message au serveur
-		time.Sleep(100)
-		fmt.Print("client: ")
-		var data=intToByte(matA)
-		data=add(data,intToByte(matB))
-		conn.Write(data)
-		fmt.Print("coucou1")
-		// On écoute tous les messages émis par le serveur et on rajouter un retour à la ligne
-		message, err := bufio.NewReader(conn).ReadString('\n')
+	// On envoie le message au serveur
+	time.Sleep(100)
+	var data=strconv.Itoa(TAILLE)+(matA)+(matB)
+	conn.Write([]byte(data))
+	// On écoute tous les messages émis par le serveur et on rajouter un retour à la ligne
+	for i := 0; i < TAILLE; i++ {
+		var string_ligne, err = bufio.NewReader(conn).ReadString(' ')
 		gestionErreur(err)
-		fmt.Print("coucou2")
-
-		// on affiche le message utilisateur
-		fmt.Print("serveur : " + message)
-			
+		string_ligne=string_ligne[:len(string_ligne)-1]
+		valeurs, err := bufio.NewReader(conn).ReadString('\n')
+		var ligne,err2=strconv.Atoi(string_ligne)
+		gestionErreur(err2)
+		result[ligne]=valeurs
+		fmt.Print("serveur : " + valeurs)
 	}
+	
 }
