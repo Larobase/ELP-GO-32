@@ -90,6 +90,7 @@ func main() {
 		
         for i := 0; i < 3; i++ {
             go multiplie(i,matA,matB,taille,conn)
+            conn.Write([]byte("je suis la"))
         }
         // on affiche le message du client en le convertissant de byte à string
 		fmt.Println("Client:", matA)

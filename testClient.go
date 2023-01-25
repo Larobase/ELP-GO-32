@@ -11,7 +11,6 @@ func gestionErreur(err error) {
 	if err != nil {
 		panic(err)
 	}
-	fmt.Print("hola")
 }
 
 const (

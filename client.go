@@ -126,10 +126,11 @@ func main() {
 		var data=intToByte(matA)
 		data=add(data,intToByte(matB))
 		conn.Write(data)
-
+		fmt.Print("coucou1")
 		// On écoute tous les messages émis par le serveur et on rajouter un retour à la ligne
 		message, err := bufio.NewReader(conn).ReadString('\n')
 		gestionErreur(err)
+		fmt.Print("coucou2")
 
 		// on affiche le message utilisateur
 		fmt.Print("serveur : " + message)

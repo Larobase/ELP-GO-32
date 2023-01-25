@@ -9,7 +9,6 @@ func gestionErreur(err error) {
     if err != nil {
         panic(err)
     }
-    fmt.Print("hola")
 }
 
 const (
@@ -51,6 +50,6 @@ func main() {
         fmt.Print("Client:", message)
 
         // On envoie le message au client pour qu'il l'affiche
-        conn.Write([]byte("ceci est un test" + "\n"))
+        conn.Write([]byte(message + "\n"))
     }
 }
