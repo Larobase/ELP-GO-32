@@ -9,7 +9,7 @@ import (
 	"math/rand"
     "io/ioutil"	
 	"time"
-	"bufio"
+	"io"
 )
 
 func gestionErreur(err error) {
@@ -18,17 +18,23 @@ func gestionErreur(err error) {
 	}
 }
 
+func gestionErreurConn(err error, conn net.Conn) {
+	if err != nil {
+        fmt.Println("Le serveur s'est déconnecté")
+		conn.Close()
+	}
+}
+
+
 const (
 	IP   = "127.0.0.01" // IP local
 	PORT = "3569"       // Port utilisé
-	A = 8
-	B = 10
-	TAILLE =3
+	TAILLE =100
 )
 func alea(file *os.File){
 	for i := 0; i < TAILLE; i++ {
 		for j := 0; j < TAILLE; j++ {
-			var str = strconv.Itoa(rand.Intn(10) + 1)
+			var str = strconv.Itoa(rand.Intn(100) + 1)
 			var _, err = file.WriteString(str+" ") // écrire dans le fichier
 			gestionErreur(err)
 		}
@@ -46,8 +52,66 @@ func textToString(file string) string{
 	for i := 0; i < TAILLE; i++ {
 		chaine_mat+=lines[i]
 	}
-	chaine_mat=strings.Replace(chaine_mat, " ", "",-1)
 	return chaine_mat
+}
+
+func byteToInt(b []byte, taille int) [][]int {
+	// Déclaration du tableau à double entrée d'entiers
+	var intArray [][]int
+	// Boucle sur chaque 4 bytes pour décoder les entiers
+	it:=0
+	for i := 0; i < taille; i += 1 {
+		intArray = append(intArray, []int{})
+		for j := 0; j < taille; j += 1 {
+			doubleByteVal:=[][]byte{}
+			var a= string(b[it: it+1])
+			for a !=" "{
+				doubleByteVal=append(doubleByteVal,[]byte(a))
+				it++
+				a=string(b[it: it+1])
+			}
+			it++
+			var byteVal = []byte{}
+			for i:=0;i<len(doubleByteVal);i++{
+				byteVal=append(byteVal, doubleByteVal[i][0])
+			}
+			var val,err2=strconv.Atoi(string(byteVal[:]))
+			gestionErreur(err2)
+			// Ajout de l'entier au sous-tableau
+			intArray[i] = append(intArray[i], val)
+		}
+	}
+
+	return intArray
+}
+
+func lireBuff(conn net.Conn)int{
+	length:=[][]byte{}
+		buffer_taille := make([]byte, 1)
+		var _,err=conn.Read(buffer_taille)
+		gestionErreurConn(err,conn)
+		var b=string(buffer_taille[0])
+		for b !=" "{
+			length=append(length,[]byte(b))
+			_,err=conn.Read(buffer_taille)
+			 b=string(buffer_taille)
+		}
+		var byteTaille = []byte{}
+		for i:=0;i<len(length);i++{
+			byteTaille=append(byteTaille, length[i][0])
+		}
+		var taille,err2=strconv.Atoi(string(byteTaille[:len(byteTaille)]))
+		gestionErreur(err2)
+		return taille	
+}
+
+func lireMat(taille int,conn net.Conn)[][]int{
+	var length=lireBuff(conn)
+	buffer:=make([]byte,(length))
+    var _,err=io.ReadFull(conn,buffer)
+    gestionErreurConn(err,conn)
+	mat := byteToInt(buffer[:], taille)
+	return mat
 }
 
 func main() {
@@ -78,28 +142,26 @@ func main() {
 	//On transforme les fichiers textes en 
 	var matA = textToString("A.txt")
 	var matB = textToString("B.txt")
-	var result = [TAILLE]string{}
-
-	//var matResult = [TAILLE][TAILLE]int{}
-	fmt.Println(time.Since(start))
+	
 	// Connexion au serveur
 	conn, err := net.Dial("tcp", fmt.Sprintf("%s:%s", IP, PORT))
-
 	gestionErreur(err)
 	// On envoie le message au serveur
-	time.Sleep(100)
-	var data=strconv.Itoa(TAILLE)+(matA)+(matB)
+	var data=(matA)
+	data=strconv.Itoa(TAILLE)+" "+strconv.Itoa(len([]byte(matA)))+" "+matA+strconv.Itoa(len([]byte(matB)))+" "+matB
 	conn.Write([]byte(data))
 	// On écoute tous les messages émis par le serveur et on rajouter un retour à la ligne
+	matResult := lireMat(TAILLE,conn)
 	for i := 0; i < TAILLE; i++ {
-		var string_ligne, err = bufio.NewReader(conn).ReadString(' ')
+		for j := 0; j < TAILLE; j++ {
+			var _, err = file_result.WriteString(strconv.Itoa(matResult[i][j])+" ") // écrire dans le fichier
+			gestionErreur(err)
+		}
+		var _, err = file_result.WriteString("\n") // écrire dans le fichier
 		gestionErreur(err)
-		string_ligne=string_ligne[:len(string_ligne)-1]
-		valeurs, err := bufio.NewReader(conn).ReadString('\n')
-		var ligne,err2=strconv.Atoi(string_ligne)
-		gestionErreur(err2)
-		result[ligne]=valeurs
-		fmt.Print("serveur : " + valeurs)
 	}
+	fmt.Println(time.Since(start))
+	fmt.Println("Le serveur a fermé la connexion")
+	os.Exit(0)
 	
 }
