@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"sync"
 )
 
 // On gère les erreurs différemment suivant si on est en connexion ou pas
@@ -30,20 +31,23 @@ func gestionErreurConn(err error, conn net.Conn) {
 const (
 	IP     = "127.0.0.01" // IP local
 	PORT   = "3569"       // Port utilisé
-	TAILLE = 100
+	TAILLE = 50
 )
+
+var wg sync.WaitGroup //on déclare ici  pour y avoir accès dans les fonctions
 
 // remplissage aléatoire des fichiers décrivant les matrices
 func alea(file *os.File) {
 	for i := 0; i < TAILLE; i++ {
 		for j := 0; j < TAILLE; j++ {
-			var str = strconv.Itoa(rand.Intn(100) + 1) //converti en string un entier entre 1 et 100 inclus
+			var str = strconv.Itoa(rand.Intn(5) + 1) //converti en string un entier entre 1 et 100 inclus
 			var _, err = file.WriteString(str + " ")   // écris dans le fichier
 			gestionErreur(err)
 		}
 		var _, err = file.WriteString("\n") // écris dans le fichier
 		gestionErreur(err)
 	}
+	defer wg.Done()	//on indique au waitgroup que le travil est terminé
 }
 
 // transforme un fichier texte en chaîne de caractères
@@ -120,7 +124,6 @@ func lireMat(taille int, conn net.Conn) [][]int {
 }
 
 func main() {
-	start := time.Now() //pour mesurer le temps entre le début et la fin du programme
 
 	//Pour chaque fichier, on supprime celui existant, on en crée un nouveau vide et on le rempli d'entiers aleatoires en fonction de TAILLE
 	os.Remove("A.txt")
@@ -142,8 +145,12 @@ func main() {
 	defer file_result.Close()
 
 	rand.Seed(time.Now().UnixNano()) //on reset l'aléatoire pour que ça change à chque nouveau lancement de programme
-	alea(file_a)
-	alea(file_b)
+	files :=[]*os.File{file_a,file_b}
+	for i := 0; i < len(files); i++ {
+		wg.Add(1)		//on rajoute un worker
+     	go alea(files[i])
+	}
+	wg.Wait() //on attend que toutes les lignes aient fini de se calculer
 
 	//On transforme les fichiers textes en chaines de caractères pour les envoyer ensuite en convertissant en tableau d'octets
 	var matA = textToString("A.txt")
@@ -161,15 +168,15 @@ func main() {
 
 	// On écoute le message émis par le serveur
 	matResult := lireMat(TAILLE, conn)
-	for i := 0; i < TAILLE; i++ {
+	matResult=matResult
+	/*for i := 0; i < TAILLE; i++ {
 		for j := 0; j < TAILLE; j++ {
 			_, err = file_result.WriteString(strconv.Itoa(matResult[i][j]) + " ") // écrire dans le fichier
 			gestionErreur(err)
 		}
 		var _, err = file_result.WriteString("\n") // écrire dans le fichier
 		gestionErreur(err)
-	}
-	fmt.Println(time.Since(start))
+	}*/
 	//une fois arrivé ici, on a fini donc on arrête la connexion avec le server
 	fmt.Println("La connexion a été fermée")
 	os.Exit(0)

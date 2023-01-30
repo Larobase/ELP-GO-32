@@ -6,6 +6,8 @@ import (
 	"strconv"
     "io"
     "sync"
+	"time"
+	"runtime"
 )
 // On gère les erreurs différemment suivant si on est en connexion ou pas
 func gestionErreurConn(err error, conn net.Conn) {
@@ -112,7 +114,7 @@ func lireMat(taille int, conn net.Conn) [][]int {
 
 // gère le client qui vient de se connecter
 func client_handler(conn net.Conn) {
-    // On écoute les messages émis par les clients
+	// On écoute les messages émis par les clients
 	var taille=lireBuff(conn)	//on récupère taille des matrices carrées
 	matA := lireMat(taille,conn)
 	matB := lireMat(taille,conn)	
@@ -120,22 +122,37 @@ func client_handler(conn net.Conn) {
 	for i:=0;i<len(matResult);i++ {
 		matResult[i] = make([]int, taille) //on lui ajoute autant de cases que matA et matB
 	}
-    for i := 0; i < taille; i++ {
-		wg.Add(1)		//on rajoute un worker
-        go multiplie(i, &matA, &matB,&matResult, taille) //on fait le calcul des lignes en simultané
-	}
-    wg.Wait() //on attend que toutes les lignes aient fini de se calculer
+	start := time.Now() //pour mesurer le temps entre le début et la fin du programme=
+	numJobs := taille
+    jobs := make(chan int, numJobs)
+	wg.Add(taille)
+    for w := 1; w <= 1; w++ {
+        
+		go func () {
+			for j := range jobs {
+				multiplie(j, &matA, &matB,&matResult, taille) //on fait le calcul des lignes en simultané
+			}
+		}()
+
+    }
+    for j := 0; j < numJobs; j++ {
+        jobs <- j
+    }
+	wg.Wait() //on attend que toutes les lignes aient fini de se calculer
+	fmt.Println("le client : ",conn.RemoteAddr()," a mis : " ,time.Since(start)) 
+    close(jobs)
 	var data=intToString(matResult) 
 	data = strconv.Itoa(len([]byte(data)))+" "+data
 	conn.Write([]byte(data)) //on renvoie la matrice résultat
     fmt.Println("Le client s'est déconnecté") //on déconnecte le client une fois que l'envoie est fait
 	conn.Close()
-              
+	       
 		
 }
 
 func main() {
 
+	fmt.Printf("Numcpu: %v\n", runtime.NumCPU())
 	fmt.Println("Lancement du serveur ...")
 
 	// on écoute sur le port 3569
