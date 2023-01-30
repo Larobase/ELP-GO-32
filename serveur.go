@@ -126,7 +126,7 @@ func client_handler(conn net.Conn) {
 	numJobs := taille
     jobs := make(chan int, numJobs)
 	wg.Add(taille)
-    for w := 1; w <= 1; w++ {
+    for w := 1; w <= 10; w++ {
         
 		go func () {
 			for j := range jobs {
