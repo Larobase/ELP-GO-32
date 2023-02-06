@@ -30,7 +30,7 @@ const (
 var wg sync.WaitGroup //on déclare ici  pour y avoir accès dans les fonctions
 
 // utilisé pour lire le retour du serveur et convertir l'info en tableau d'entiers et recréer matResult
-func byteToInt(b []byte, taille int) [][]int {
+func byteToInt(b []byte, taille int,conn net.Conn) [][]int {
 	var intArray [][]int             // Déclaration du tableau à double entrée d'entiers
 	it := 0                          //utilisé pour parcourir le tableau d'octets
 	for i := 0; i < taille; i += 1 { //parcours des lignes
@@ -49,7 +49,7 @@ func byteToInt(b []byte, taille int) [][]int {
 				byteVal = append(byteVal, doubleByteVal[i][0])
 			}
 			var val, err2 = strconv.Atoi(string(byteVal[:])) //transforme tout le tableau en string puis en entier, obligé de passer par string car moins complexe
-			gestionErreur(err2)
+			gestionErreurConn(err2,conn)
 			// Ajout de l'entier au sous-tableau
 			intArray[i] = append(intArray[i], val) //on rajoute l'entier au bon endroit
 		}
@@ -98,7 +98,7 @@ func lireBuff(conn net.Conn) int {
 		byteTaille = append(byteTaille, length[i][0])
 	}
 	var taille, err2 = strconv.Atoi(string(byteTaille[:len(byteTaille)]))
-	gestionErreur(err2)
+	gestionErreurConn(err2,conn)
 	return taille
 }
 
